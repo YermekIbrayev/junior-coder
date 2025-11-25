@@ -13,3 +13,6 @@ qdrant_storage/*
 .claude/
 .mcp.json
 CLAUDE.md
+
+# environment variables
+.env
