@@ -7,3 +7,9 @@ qdrant_storage/*
 # keep this files
 !venv/.gitkeep
 !qdrant_storage/.gitkeep
+
+# AI tools cache
+.serena/
+.claude/
+.mcp.json
+CLAUDE.md
