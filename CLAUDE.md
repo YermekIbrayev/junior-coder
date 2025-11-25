@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Constitution
+
+**MUST follow**: [Agent Constitution](src/agents/constitution/INDEX.md) - Core principles, planning, TDD, quality gates, and architecture standards.
+
 ## Overview
 
 MUST: use sequentual thinking when solving problems
