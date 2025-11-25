@@ -1,1 +1,9 @@
-/venv/
+# environment folder
+venv/
+
+# qdrant storage folder
+qdrant_storage/*
+
+# keep this files
+!venv/.gitkeep
+!qdrant_storage/.gitkeep
