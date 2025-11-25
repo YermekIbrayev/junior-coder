@@ -1,0 +1,78 @@
+version: '3.8'
+
+# Qdrant Vector Database for CPU Server
+# Hardware: 2 sockets × 14 threads = 28 threads, 256GB RAM
+# Collections: agent_memories (Mem0), project_knowledge (ApeRAG), shared_context
+#
+# This file is deployed on the SEPARATE CPU server (not GB10)
+# GB10 orchestrator will connect to this Qdrant instance remotely
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-cpu
+
+    # Network ports
+    # 6333: HTTP REST API (used by orchestrator, Mem0, ApeRAG)
+    # 6334: gRPC API (higher performance, optional)
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+
+    # Storage volumes
+    volumes:
+      - ./qdrant_storage:/qdrant/storage  # Persistent vector storage
+      - ./collections:/qdrant/collections:ro  # Collection configs (read-only)
+
+    # Environment configuration
+    environment:
+      - QDRANT_LOG_LEVEL=INFO
+      - QDRANT_ALLOW_RECOVERY_MODE=true  # Enable recovery mode for data safety
+
+    # Start command (use default configuration)
+    command: ./qdrant
+
+    # Health check
+    # Ensures Qdrant is ready before orchestrator attempts connection
+    # Critical for distributed deployment (avoids connection errors at startup)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    # Resource allocation
+    # 32GB allocated: ~2GB (agent_memories) + ~20GB (project_knowledge) + ~0.2GB (shared_context) + ~10GB overhead
+    # 28 threads: All available CPU threads for maximum parallelism
+    deploy:
+      resources:
+        limits:
+          memory: 32G  # Maximum memory usage
+          cpus: '28'   # All 28 threads available
+        reservations:
+          memory: 16G  # Minimum guaranteed memory
+          cpus: '14'   # Minimum guaranteed threads (1 socket)
+
+    # Restart policy for production reliability
+    restart: unless-stopped
+
+    # Network mode
+    # Use bridge for standard Docker networking
+    # Change to "host" for maximum performance (eliminates Docker network overhead)
+    network_mode: bridge
+
+# Named volume for better management
+volumes:
+  qdrant_storage:
+    driver: local
+
+# Deployment instructions:
+# 1. Copy this file to CPU server
+# 2. Copy collections/ directory with 3 YAML configs
+# 3. Run: docker-compose -f docker-compose-qdrant.yaml up -d
+# 4. Run: ./init_qdrant_collections.sh (to create collections)
+# 5. Verify: curl http://localhost:6333/collections
+#
+# From GB10 orchestrator, set: QDRANT_URL=http://CPU_SERVER_IP:6333
+# From MacBook client, collections accessible via GB10 orchestrator

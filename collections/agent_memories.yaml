@@ -1,0 +1,63 @@
+# Qdrant Collection Configuration: agent_memories
+# Purpose: Mem0 storage for 12 AI agent long-term memories
+# Access Pattern: Frequent read/write (every agent interaction)
+# Expected Size: 12K vectors initially, growing ~100/day
+
+vectors:
+  size: 1024  # BGE-M3 embedding dimension
+  distance: Cosine  # Cosine similarity for semantic search
+
+# HNSW index configuration
+# m=16 is optimal for 12K vectors (balanced speed/quality)
+hnsw_config:
+  m: 16  # Links per node in HNSW graph
+  ef_construct: 100  # Construction-time accuracy (higher = better quality, slower build)
+  full_scan_threshold: 10000  # Switch to brute force below this size
+
+# Quantization: int8 scalar for 2x memory reduction with minimal accuracy loss
+# Always keep quantized vectors in RAM for fast search (< 15ms target)
+quantization_config:
+  scalar:
+    type: int8
+    quantile: 0.99  # 99th percentile for outlier handling
+    always_ram: true
+
+# Storage optimization
+# Keep all payloads in RAM (not disk) because:
+# 1. Frequent access (every agent interaction)
+# 2. Small total size (~2GB for 12K vectors)
+# 3. Target latency < 15ms requires RAM-resident data
+on_disk_payload: false
+
+# Optimizers configuration
+optimizers_config:
+  indexing_threshold: 10000  # Rebuild index after 10K updates
+  max_segment_size: 100000  # Max vectors per segment
+
+# Payload schema for filtering
+# All indexed fields enable fast filtering (e.g., "show memories for agent_planner")
+payload_schema:
+  user_id:
+    type: keyword  # Exact match (e.g., "yermek_ibrayev")
+    index: true
+  agent_id:
+    type: keyword  # Agent identifier (e.g., "agent_implementer")
+    index: true
+  timestamp:
+    type: datetime  # ISO 8601 format for time-based queries
+    index: true
+  memory_type:
+    type: keyword  # conversation | state | preference | learning
+    index: true
+  session_id:
+    type: keyword  # Session grouping (no index needed, used for display)
+    index: false
+  project_id:
+    type: keyword  # Project context (e.g., "junior-coder")
+    index: true
+
+# Performance targets on CPU server (28 threads):
+# - Search latency: 10-15ms (RAM-resident + quantization)
+# - Write latency: 5ms (no disk writes)
+# - Concurrent capacity: 1000+ QPS
+# - Actual load: 120 ops/min (99% headroom)

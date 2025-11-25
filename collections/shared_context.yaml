@@ -1,0 +1,66 @@
+# Qdrant Collection Configuration: shared_context
+# Purpose: Cross-agent shared context for task coordination and global state
+# Access Pattern: Moderate read, low write
+# Expected Size: 1K vectors (small, stable dataset)
+
+vectors:
+  size: 1024  # BGE-M3 embedding dimension
+  distance: Cosine
+  on_disk: false  # Keep in RAM (tiny dataset)
+
+# HNSW index configuration (standard for small dataset)
+hnsw_config:
+  m: 16  # Standard configuration
+  ef_construct: 100
+  full_scan_threshold: 5000  # Likely will use brute force (dataset < threshold)
+
+# No quantization for small dataset
+# Quantization adds overhead without benefit for 1K vectors
+# Prioritize accuracy over speed (speed already excellent for small size)
+quantization_config: null
+
+# Storage optimization
+# Everything in RAM for maximum performance (< 10ms target)
+on_disk_payload: false
+
+# Optimizers configuration
+optimizers_config:
+  indexing_threshold: 5000  # Rebuild after 5K updates (rare for this collection)
+  max_segment_size: 50000
+
+# Payload schema
+# Indexed fields enable fast filtering for task coordination
+payload_schema:
+  context_type:
+    type: keyword  # task_definition | workflow | preference | system_state
+    index: true
+  priority:
+    type: integer  # 1-10 priority for task scheduling
+    index: true
+  created_by_agent:
+    type: keyword  # Which agent created this context
+    index: true
+  tags:
+    type: keyword  # Array of tags for categorization
+    index: true
+  timestamp:
+    type: datetime  # Creation time
+    index: true
+  status:
+    type: keyword  # active | completed | archived
+    index: true
+  related_agents:
+    type: keyword  # Which agents need this context
+    index: false
+
+# Performance targets on CPU server (28 threads):
+# - Search latency: 5-8ms (tiny dataset, RAM-resident, no quantization)
+# - Write latency: 3ms (no disk writes)
+# - Concurrent capacity: 1500+ QPS
+# - Actual load: ~1 QPS (99.9% headroom)
+
+# Use cases:
+# - Task definitions shared across agents
+# - Workflow state for multi-agent coordination
+# - User preferences (e.g., coding style, ADHD-friendly features)
+# - System-wide configuration

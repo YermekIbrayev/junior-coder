@@ -1,0 +1,75 @@
+# Qdrant Collection Configuration: project_knowledge
+# Purpose: ApeRAG GraphRAG storage for project documentation and code
+# Access Pattern: Read-heavy (90% reads, 10% writes)
+# Expected Size: 100K vectors (depends on project size)
+
+vectors:
+  size: 1024  # BGE-M3 embedding dimension
+  distance: Cosine
+  on_disk: true  # Store vectors on disk (larger dataset, memory efficiency)
+
+# HNSW index configuration
+# m=32 provides better recall for read-heavy workload
+# Higher m = more links = better search quality (at cost of build time)
+hnsw_config:
+  m: 32  # More links per node for better recall
+  ef_construct: 200  # High construction quality for read-optimized index
+  full_scan_threshold: 50000  # Larger threshold for bigger dataset
+
+# Quantization: binary for 32x memory reduction and 2-4x search speedup
+# Binary quantization: Each dimension → 1 bit (minimal accuracy loss for cosine)
+quantization_config:
+  binary:
+    always_ram: true  # Keep binary vectors in RAM (only 128 bytes per vector)
+
+# Storage optimization for large dataset
+on_disk_payload: true  # Store payloads on disk to save RAM
+
+# Write-Ahead Log configuration
+wal_config:
+  wal_capacity_mb: 128  # 128MB WAL buffer
+  wal_segments_ahead: 2  # Pre-allocate 2 segments
+
+# Memory mapping threshold
+# Files > 100MB use mmap for efficient access without loading into RAM
+mmap_threshold_kb: 102400  # 100MB
+
+# Optimizers configuration
+optimizers_config:
+  indexing_threshold: 20000  # Rebuild after 20K updates
+  max_segment_size: 500000  # Max 500K vectors per segment
+  memmap_threshold: 100000  # Use mmap for segments > 100K vectors
+
+# Payload schema for filtering and GraphRAG
+payload_schema:
+  project_id:
+    type: keyword  # Project identifier
+    index: true
+  doc_type:
+    type: keyword  # code | documentation | diagram | test
+    index: true
+  file_path:
+    type: text  # Full file path with tokenization for search
+    index: true
+    tokenizer: word  # Word-level tokenization for path search
+  language:
+    type: keyword  # python | javascript | yaml | markdown | etc.
+    index: true
+  git_commit:
+    type: keyword  # Git commit SHA (for versioning)
+    index: false
+  timestamp:
+    type: datetime  # Last modified timestamp
+    index: true
+  entities:
+    type: keyword  # Extracted entities for GraphRAG (e.g., class names, functions)
+    index: true
+  relationships:
+    type: keyword  # Relationships to other entities (e.g., "imports", "calls")
+    index: false
+
+# Performance targets on CPU server (28 threads):
+# - Search latency: 20-30ms (on-disk vectors + binary quantization)
+# - Write latency: 10-15ms (disk writes for payload)
+# - Concurrent capacity: 500-800 QPS
+# - Actual load: 10-20 QPS during active work (95% headroom)
