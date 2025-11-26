@@ -1,23 +1,23 @@
 """
 Orchestrator - Intent classification and chain dispatch.
 
-This is a facade module that re-exports from the refactored orchestrator package.
-All functionality has been moved to src/agents/orchestrator/ for better organization.
+This package provides modular orchestration:
+- models.py: Data structures (Intent, IntentClassification, OrchestratorResult)
+- constants.py: Configuration values and prompts
+- classifier.py: LLM-based intent classification
+- runner.py: Main orchestration and chain execution
 
 Usage:
-    # All these imports continue to work:
     from src.agents.orchestrator import run_orchestrator, OrchestratorResult
-    from src.agents.orchestrator import Intent, IntentClassification
+    result = await run_orchestrator(user_message, conversation, execute_chain=True)
 """
 
-# Re-export everything from the orchestrator package for backward compatibility
-from src.agents.orchestrator import (
-    # Models
+from src.agents.orchestrator.models import (
     Intent,
     IntentClassification,
     OrchestratorResult,
-
-    # Constants
+)
+from src.agents.orchestrator.constants import (
     CONFIDENCE_THRESHOLD,
     CLASSIFICATION_TEMPERATURE,
     CLASSIFICATION_MAX_TOKENS,
@@ -25,16 +25,16 @@ from src.agents.orchestrator import (
     CLARIFYING_QUESTION,
     INTENT_DISPLAY_NAMES,
     CLASSIFICATION_PROMPT,
-
-    # Functions
-    classify_intent,
-    run_orchestrator,
 )
+from src.agents.orchestrator.classifier import classify_intent
+from src.agents.orchestrator.runner import run_orchestrator
 
 __all__ = [
+    # Models
     "Intent",
     "IntentClassification",
     "OrchestratorResult",
+    # Constants
     "CONFIDENCE_THRESHOLD",
     "CLASSIFICATION_TEMPERATURE",
     "CLASSIFICATION_MAX_TOKENS",
@@ -42,6 +42,7 @@ __all__ = [
     "CLARIFYING_QUESTION",
     "INTENT_DISPLAY_NAMES",
     "CLASSIFICATION_PROMPT",
+    # Functions
     "classify_intent",
     "run_orchestrator",
 ]
