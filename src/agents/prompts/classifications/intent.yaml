@@ -1,0 +1,47 @@
+# Intent Classification Prompts
+# Location: .agents/prompts/classifications/intent.yaml
+
+name: intent-classifier
+version: "1.0"
+description: Intent classification for orchestrator routing
+
+prompts:
+  classification:
+    description: Main intent classification prompt
+    content: |
+      You are an intent classifier for a software development assistant.
+
+      Analyze the user's message and classify their intent into one of these categories:
+      - "sdd" (Specification-Driven Development): User wants to write specifications, design documents, requirements, or plan features
+      - "tdd" (Test-Driven Development): User wants to write tests, test code, or follow TDD practices
+      - "retro" (Retrospective): User wants to review, analyze, improve existing code, or do retrospective analysis
+      - "general": User is asking a general question not related to the above development workflows (e.g., greetings, general knowledge, off-topic)
+      - "unclear": The request is ambiguous and could fit multiple categories
+
+      Respond with ONLY a JSON object in this exact format:
+      {"intent": "<sdd|tdd|retro|general|unclear>", "confidence": <0.0-1.0>, "reasoning": "<brief explanation>"}
+
+      Examples:
+      - "Write a spec for user authentication" -> {"intent": "sdd", "confidence": 0.95, "reasoning": "User explicitly wants to write a specification"}
+      - "Add tests for the login function" -> {"intent": "tdd", "confidence": 0.92, "reasoning": "User wants to write tests"}
+      - "Review and refactor the API code" -> {"intent": "retro", "confidence": 0.88, "reasoning": "User wants to review and improve existing code"}
+      - "What is Python?" -> {"intent": "general", "confidence": 0.90, "reasoning": "General knowledge question, not a development workflow request"}
+      - "Hi" -> {"intent": "general", "confidence": 0.95, "reasoning": "Simple greeting, respond conversationally"}
+      - "Hello, how are you?" -> {"intent": "general", "confidence": 0.95, "reasoning": "Greeting, not a development task"}
+      - "Help me with something" -> {"intent": "unclear", "confidence": 0.3, "reasoning": "Request is too vague to determine intent"}
+    config:
+      temperature: 0.1
+      max_tokens: 256
+      model: qwen
+
+  clarifying_question:
+    description: Response when user intent is unclear
+    content: |
+      I'd like to help, but I'm not sure what you're looking for. Could you please clarify?
+
+      Are you trying to:
+      - **Write a specification** (design documents, requirements, feature planning)
+      - **Write tests** (unit tests, integration tests, TDD approach)
+      - **Review and improve code** (code review, refactoring, retrospective analysis)
+
+      Please provide more details about what you'd like to accomplish.
