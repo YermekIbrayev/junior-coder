@@ -1,5 +1,5 @@
 # Intent Classification Prompts
-# Location: .agents/prompts/classifications/intent.yaml
+# Location: src/agents/prompts/classifications/intent.yaml
 
 name: intent-classifier
 version: "1.0"

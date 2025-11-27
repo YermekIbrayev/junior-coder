@@ -1,8 +1,8 @@
 """
-YAML Prompt Loader.
+YAML and Markdown Prompt Loader.
 
-Loads prompts from src/agents/prompts/ YAML files.
-Single Responsibility: Load and provide access to YAML-defined prompts.
+Loads prompts from src/agents/prompts/ YAML and markdown files.
+Single Responsibility: Load and provide access to prompt content.
 
 Folder structure:
   src/agents/prompts/
@@ -10,14 +10,17 @@ Folder structure:
   ├── classifications/        # Classification prompts
   │   └── intent.yaml
   └── {agent-name}/          # Agent prompts
-      └── core.yaml
+      └── core.yaml or core.md
 """
 
 from pathlib import Path
+from typing import Optional
 import yaml
 
-# Path to YAML prompts directory (same directory as this loader)
+# Path to prompts directory (same directory as this loader)
 PROMPTS_YAML_PATH = Path(__file__).parent
+# Alias for backwards compatibility
+PROMPTS_DIR = PROMPTS_YAML_PATH
 
 
 def load_yaml_prompt(file_path: str, prompt_key: str) -> dict:
@@ -69,29 +72,71 @@ def get_prompt_content(file_path: str, prompt_key: str) -> str:
     return prompt["content"]
 
 
-def load_agent_prompt(agent_name: str) -> str:
+def load_agent_prompt(agent_name: str, filename: Optional[str] = None) -> str:
     """
-    Load an agent's core prompt from YAML.
+    Load an agent's core prompt from YAML or markdown.
 
-    Agents have prompts in src/agents/prompts/{agent-name}/core.yaml.
-    Returns the 'role' field which contains the agent's identity and instructions.
+    Agents have prompts in src/agents/prompts/{agent-name}/.
+    Tries core.md first, then core.yaml.
 
     Args:
         agent_name: Name of the agent (e.g., "spec-analyst", "test-architect")
+        filename: Optional specific filename to load
 
     Returns:
-        The agent's role/prompt as a string.
+        The agent's prompt as a string.
 
     Raises:
         FileNotFoundError: If the agent's prompt file doesn't exist.
     """
-    agent_path = PROMPTS_YAML_PATH / agent_name / "core.yaml"
+    prompt_dir = PROMPTS_YAML_PATH / agent_name
 
-    if not agent_path.exists():
-        raise FileNotFoundError(f"Agent prompt not found: {agent_path}")
+    # If specific filename provided, use it directly
+    if filename:
+        prompt_file = prompt_dir / filename
+        if not prompt_file.exists():
+            raise FileNotFoundError(
+                f"Prompt file not found: {prompt_file}. "
+                f"Create {agent_name}/{filename} in src/agents/prompts/"
+            )
+        return prompt_file.read_text(encoding="utf-8")
 
-    with open(agent_path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    # Try .md first (preferred), then .yaml
+    for ext_file in ["core.md", "core.yaml"]:
+        prompt_file = prompt_dir / ext_file
+        if prompt_file.exists():
+            if ext_file.endswith(".yaml"):
+                # For YAML files, return the 'role' field
+                with open(prompt_file, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                return data.get("role", "")
+            else:
+                return prompt_file.read_text(encoding="utf-8")
 
-    # Return the role as the main prompt content
-    return data.get("role", "")
+    raise FileNotFoundError(
+        f"Agent prompt not found in: {prompt_dir}. "
+        f"Create {agent_name}/core.md or core.yaml in src/agents/prompts/"
+    )
+
+
+def get_prompt_path(prompt_path: str) -> Path:
+    """
+    Get the full path to an agent's prompt directory.
+
+    Args:
+        prompt_path: Directory name under prompts/
+
+    Returns:
+        Path to the prompt directory
+    """
+    return PROMPTS_DIR / prompt_path
+
+
+__all__ = [
+    "PROMPTS_YAML_PATH",
+    "PROMPTS_DIR",
+    "load_yaml_prompt",
+    "get_prompt_content",
+    "load_agent_prompt",
+    "get_prompt_path",
+]

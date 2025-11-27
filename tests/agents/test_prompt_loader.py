@@ -53,10 +53,10 @@ class TestPromptLoaderPaths:
         assert isinstance(PROMPTS_YAML_PATH, Path)
 
     def test_prompts_yaml_path_points_to_agents_prompts(self):
-        """PROMPTS_YAML_PATH must point to .agents/prompts/."""
+        """PROMPTS_YAML_PATH must point to src/agents/prompts/."""
         from src.agents.prompts.loader import PROMPTS_YAML_PATH
         assert PROMPTS_YAML_PATH.name == "prompts"
-        assert PROMPTS_YAML_PATH.parent.name == ".agents"
+        assert PROMPTS_YAML_PATH.parent.name == "agents"
 
 
 # ============================================================================

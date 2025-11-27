@@ -14,10 +14,12 @@ from src.agents.gateway.endpoints.chat import (
     router as chat_router,
     set_http_client,
 )
+from src.agents.gateway.endpoints.tools import router as tools_router
 
 # Combined router
 router = APIRouter()
 router.include_router(health_router)
 router.include_router(chat_router)
+router.include_router(tools_router)
 
 __all__ = ["router", "set_http_client"]

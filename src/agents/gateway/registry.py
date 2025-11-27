@@ -25,6 +25,9 @@ AGENTS = {
     "synthesis-specialist": "Aggregates retrospectives",
     "system-improver": "Recommends system improvements",
     "vibe-check-guardian": "Challenges assumptions, identifies blind spots",
+
+    # Tool Agents
+    "indexer": "Indexes codebase structure, enables architecture search",
 }
 
 __all__ = ["AGENTS"]

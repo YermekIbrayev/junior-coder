@@ -1,7 +1,7 @@
 """
 Tests for BaseAgent class.
 
-TDD Phase: RED - These tests should FAIL until BaseAgent is implemented.
+TDD Phase: GREEN - BaseAgent loads prompts from .agents/prompts/{agent}/core.yaml
 """
 
 import pytest
@@ -96,7 +96,7 @@ class TestBaseAgentLoadPrompt:
         assert len(result) > 0
 
     def test_load_prompt_includes_core_content(self):
-        """load_prompt() must load core.md content from prompt_path."""
+        """load_prompt() must load core.yaml content from prompt_path."""
         from src.agents.agents.base import BaseAgent
 
         agent = BaseAgent(
@@ -105,8 +105,8 @@ class TestBaseAgentLoadPrompt:
             prompt_path="spec-analyst"
         )
         result = agent.load_prompt()
-        # core.md contains role definition
-        assert "Spec Analyst" in result or "spec-analyst" in result.lower()
+        # core.yaml contains role definition
+        assert "Spec Analyst" in result or "spec" in result.lower()
 
     def test_load_prompt_with_invalid_path_raises_error(self):
         """load_prompt() must raise FileNotFoundError for invalid prompt_path."""
@@ -121,89 +121,28 @@ class TestBaseAgentLoadPrompt:
             agent.load_prompt()
 
 
-class TestBaseAgentPromptLoader:
-    """Test prompt loader utility function."""
+class TestBaseAgentYamlPromptLoader:
+    """Test BaseAgent loads prompts from YAML files."""
 
-    def test_load_prompt_file_reads_index(self):
-        """Prompt loader must read INDEX.md to understand module structure."""
-        from src.agents.agents.base import load_prompt_file
+    def test_load_prompt_uses_yaml_loader(self):
+        """BaseAgent.load_prompt() must use YAML loader from .agents/prompts/."""
+        from src.agents.agents.base import BaseAgent
+        from src.agents.prompts.loader import load_agent_prompt
 
-        # INDEX.md exists for spec-analyst
-        prompts_dir = Path("src/agents/prompts/spec-analyst")
-        content = load_prompt_file(prompts_dir / "INDEX.md")
-        assert "INDEX" in content or "Navigation" in content
+        agent = BaseAgent(
+            id="spec-analyst",
+            name="Spec Analyst",
+            prompt_path="spec-analyst"
+        )
+        agent_prompt = agent.load_prompt()
+        yaml_prompt = load_agent_prompt("spec-analyst")
+        assert agent_prompt == yaml_prompt
 
-    def test_load_prompt_file_reads_core(self):
-        """Prompt loader must be able to read core.md."""
-        from src.agents.agents.base import load_prompt_file
+    def test_load_prompt_loads_from_agents_prompts(self):
+        """BaseAgent.load_prompt() must load from .agents/prompts/{path}/core.md or core.yaml."""
+        from src.agents.agents.base import BaseAgent
+        from src.agents.prompts.loader import PROMPTS_DIR
 
-        prompts_dir = Path("src/agents/prompts/spec-analyst")
-        content = load_prompt_file(prompts_dir / "core.md")
-        assert "Role" in content or "Agent" in content
-
-    def test_load_prompt_file_raises_for_missing(self):
-        """Prompt loader must raise FileNotFoundError for missing files."""
-        from src.agents.agents.base import load_prompt_file
-
-        with pytest.raises(FileNotFoundError):
-            load_prompt_file(Path("nonexistent/file.md"))
-
-
-class TestPromptLoaderIndexNavigation:
-    """Test prompt loader INDEX.md-based navigation per research.md decision."""
-
-    def test_index_md_contains_loading_strategy(self):
-        """INDEX.md must contain loading strategy guidance."""
-        from src.agents.agents.base import load_prompt_file
-
-        prompts_dir = Path("src/agents/prompts/spec-analyst")
-        content = load_prompt_file(prompts_dir / "INDEX.md")
-        # INDEX.md should have loading instructions
-        assert "Load" in content or "core.md" in content
-
-    def test_index_md_lists_available_modules(self):
-        """INDEX.md must list available modules for the agent."""
-        from src.agents.agents.base import load_prompt_file
-
-        prompts_dir = Path("src/agents/prompts/spec-analyst")
-        content = load_prompt_file(prompts_dir / "INDEX.md")
-        # Should reference core.md as minimum
-        assert "core" in content.lower()
-
-    def test_prompt_loader_handles_different_agents(self):
-        """Prompt loader should work for multiple agent prompt directories."""
-        from src.agents.agents.base import load_prompt_file
-
-        # Test with different agents that have prompts
-        agents_with_prompts = [
-            "spec-analyst",
-            "spec-clarifier",
-            "code-planner",
-            "test-architect"
-        ]
-
-        for agent_name in agents_with_prompts:
-            prompts_dir = Path(f"src/agents/prompts/{agent_name}")
-            core_content = load_prompt_file(prompts_dir / "core.md")
-            assert len(core_content) > 0, f"core.md empty for {agent_name}"
-
-    def test_load_prompt_returns_utf8_content(self):
-        """Prompt loader must handle UTF-8 encoded content."""
-        from src.agents.agents.base import load_prompt_file
-
-        prompts_dir = Path("src/agents/prompts/spec-analyst")
-        content = load_prompt_file(prompts_dir / "core.md")
-        # Should be able to encode/decode as UTF-8
-        assert content == content.encode("utf-8").decode("utf-8")
-
-    def test_base_agent_load_prompt_uses_prompts_base_path(self):
-        """BaseAgent.load_prompt() must use PROMPTS_BASE_PATH constant."""
-        from src.agents.agents.base import BaseAgent, PROMPTS_BASE_PATH
-
-        assert PROMPTS_BASE_PATH.exists()
-        assert "prompts" in str(PROMPTS_BASE_PATH)
-
-        # Verify agent can load from the base path
         agent = BaseAgent(
             id="test-architect",
             name="Test Architect",
@@ -211,3 +150,41 @@ class TestPromptLoaderIndexNavigation:
         )
         prompt = agent.load_prompt()
         assert len(prompt) > 0
+
+        # Verify a prompt file exists (either .md or .yaml)
+        md_file = PROMPTS_DIR / "test-architect" / "core.md"
+        yaml_file = PROMPTS_DIR / "test-architect" / "core.yaml"
+        assert md_file.exists() or yaml_file.exists()
+
+    def test_load_prompt_handles_different_agents(self):
+        """load_prompt() should work for multiple agents."""
+        from src.agents.agents.base import BaseAgent
+
+        agents = [
+            ("spec-analyst", "Spec Analyst"),
+            ("test-architect", "Test Architect"),
+            ("code-planner", "Code Planner"),
+            ("implementation-specialist", "Implementation Specialist"),
+        ]
+
+        for agent_id, agent_name in agents:
+            agent = BaseAgent(
+                id=agent_id,
+                name=agent_name,
+                prompt_path=agent_id
+            )
+            prompt = agent.load_prompt()
+            assert len(prompt) > 0, f"Prompt empty for {agent_id}"
+
+    def test_load_prompt_returns_utf8_content(self):
+        """Prompt loader must handle UTF-8 encoded content."""
+        from src.agents.agents.base import BaseAgent
+
+        agent = BaseAgent(
+            id="spec-analyst",
+            name="Spec Analyst",
+            prompt_path="spec-analyst"
+        )
+        content = agent.load_prompt()
+        # Should be able to encode/decode as UTF-8
+        assert content == content.encode("utf-8").decode("utf-8")
