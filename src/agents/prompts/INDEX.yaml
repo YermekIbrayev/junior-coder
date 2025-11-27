@@ -1,0 +1,87 @@
+# Prompts Index
+# Location: .agents/prompts/INDEX.yaml
+# Master index for all system prompts
+
+system:
+  name: Vision Model Prompt System
+  version: "2.0"
+  description: |
+    Centralized YAML-based prompt management for multi-agent orchestration.
+    All prompts stored in .agents/prompts/ with folder-per-category structure.
+
+structure:
+  layout: |
+    .agents/prompts/
+    ├── INDEX.yaml              # This file - master index
+    ├── classifications/        # Classification/routing prompts
+    │   └── intent.yaml        # Intent classification
+    └── {agent-name}/          # One folder per agent
+        └── core.yaml          # Agent's core prompt
+
+classifications:
+  intent:
+    file: classifications/intent.yaml
+    purpose: Intent classification for orchestrator routing
+    prompts:
+      - classification: Classifies user intent (sdd/tdd/retro/general/unclear)
+      - clarifying_question: Response when intent is unclear
+
+agents:
+  spec-analyst:
+    file: spec-analyst/core.yaml
+    phase: specification
+    purpose: Analyzes requirements and creates specifications
+
+  test-architect:
+    file: test-architect/core.yaml
+    phase: testing
+    purpose: Designs test strategies and writes tests (TDD)
+
+  code-planner:
+    file: code-planner/core.yaml
+    phase: planning
+    purpose: Plans implementation approach and architecture
+
+  implementation-specialist:
+    file: implementation-specialist/core.yaml
+    phase: implementation
+    purpose: Writes production code to pass tests
+
+  quality-guardian:
+    file: quality-guardian/core.yaml
+    phase: review
+    purpose: Reviews code quality and security
+
+  synthesis-specialist:
+    file: synthesis-specialist/core.yaml
+    phase: retrospective
+    purpose: Analyzes and synthesizes information
+
+  knowledge-curator:
+    file: knowledge-curator/core.yaml
+    phase: retrospective
+    purpose: Organizes and stores knowledge
+
+  system-improver:
+    file: system-improver/core.yaml
+    phase: retrospective
+    purpose: Recommends system improvements
+
+  orchestrator:
+    file: orchestrator/core.yaml
+    phase: routing
+    purpose: Routes requests to appropriate chains
+
+usage:
+  classification_prompts: |
+    from src.agents.prompts import get_prompt_content
+    prompt = get_prompt_content("classifications/intent.yaml", "classification")
+
+  agent_prompts: |
+    from src.agents.prompts import load_agent_prompt
+    prompt = load_agent_prompt("spec-analyst")
+
+  via_base_agent: |
+    from src.agents.agents.base import BaseAgent
+    agent = BaseAgent(id="spec-analyst", name="Spec Analyst", prompt_path="spec-analyst")
+    prompt = agent.load_prompt()
