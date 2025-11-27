@@ -53,12 +53,13 @@ class AgentRunner:
         Returns:
             The assistant's response content as a string
         """
-        return await call_llm(
+        message = await call_llm(
             http_client=self._http_client,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens
         )
+        return message.get("content", "")
 
     async def run_agent(
         self,
