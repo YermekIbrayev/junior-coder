@@ -1,34 +1,95 @@
 """
-Prompt Loader - Loads agent prompts from markdown files.
+YAML and Markdown Prompt Loader.
 
-Prompts are stored in src/agents/prompts/{agent-name}/core.md
+Loads prompts from src/agents/prompts/ YAML and markdown files.
+Single Responsibility: Load and provide access to prompt content.
+
+Folder structure:
+  src/agents/prompts/
+  ├── INDEX.yaml              # Master index
+  ├── classifications/        # Classification prompts
+  │   └── intent.yaml
+  └── {agent-name}/          # Agent prompts
+      └── core.yaml or core.md
 """
 
 from pathlib import Path
 from typing import Optional
+import yaml
+
+# Path to prompts directory (same directory as this loader)
+PROMPTS_YAML_PATH = Path(__file__).parent
+# Alias for backwards compatibility
+PROMPTS_DIR = PROMPTS_YAML_PATH
 
 
-# Base directory for prompts
-PROMPTS_DIR = Path(__file__).parent
-# Backwards compatibility alias
-PROMPTS_YAML_PATH = PROMPTS_DIR
-
-
-def load_agent_prompt(prompt_path: str, filename: Optional[str] = None) -> str:
+def load_yaml_prompt(file_path: str, prompt_key: str) -> dict:
     """
-    Load an agent's prompt from its directory.
+    Load a specific prompt from a YAML file.
 
     Args:
-        prompt_path: Directory name under prompts/ (e.g., "spec-analyst")
-        filename: Prompt file name. If None, tries core.md then core.yaml
+        file_path: Relative path to YAML file (e.g., "classifications/intent.yaml")
+        prompt_key: Key of the prompt within the file (e.g., "classification")
 
     Returns:
-        The prompt content as a string
+        Dictionary containing prompt data with at least 'content' key.
 
     Raises:
-        FileNotFoundError: If prompt file doesn't exist
+        FileNotFoundError: If the YAML file doesn't exist.
+        KeyError: If the prompt_key doesn't exist in the file.
     """
-    prompt_dir = PROMPTS_DIR / prompt_path
+    full_path = PROMPTS_YAML_PATH / file_path
+
+    if not full_path.exists():
+        raise FileNotFoundError(f"Prompt file not found: {full_path}")
+
+    with open(full_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    if "prompts" not in data:
+        raise KeyError(f"No 'prompts' section in {file_path}")
+
+    if prompt_key not in data["prompts"]:
+        raise KeyError(f"Prompt '{prompt_key}' not found in {file_path}")
+
+    return data["prompts"][prompt_key]
+
+
+def get_prompt_content(file_path: str, prompt_key: str) -> str:
+    """
+    Get the content string from a prompt.
+
+    Convenience function that extracts just the content field.
+
+    Args:
+        file_path: Relative path to YAML file (e.g., "classifications/intent.yaml")
+        prompt_key: Key of the prompt within the file (e.g., "classification")
+
+    Returns:
+        The prompt content as a string.
+    """
+    prompt = load_yaml_prompt(file_path, prompt_key)
+    return prompt["content"]
+
+
+def load_agent_prompt(agent_name: str, filename: Optional[str] = None) -> str:
+    """
+    Load an agent's core prompt from YAML or markdown.
+
+    Agents have prompts in src/agents/prompts/{agent-name}/.
+    Tries core.md first, then core.yaml.
+
+    Args:
+        agent_name: Name of the agent (e.g., "spec-analyst", "test-architect")
+        filename: Optional specific filename to load
+
+    Returns:
+        The agent's prompt as a string.
+
+    Raises:
+        FileNotFoundError: If the agent's prompt file doesn't exist.
+    """
+    prompt_dir = PROMPTS_YAML_PATH / agent_name
 
     # If specific filename provided, use it directly
     if filename:
@@ -36,19 +97,25 @@ def load_agent_prompt(prompt_path: str, filename: Optional[str] = None) -> str:
         if not prompt_file.exists():
             raise FileNotFoundError(
                 f"Prompt file not found: {prompt_file}. "
-                f"Create {prompt_path}/{filename} in src/agents/prompts/"
+                f"Create {agent_name}/{filename} in src/agents/prompts/"
             )
         return prompt_file.read_text(encoding="utf-8")
 
-    # Try multiple extensions in order of preference
+    # Try .md first (preferred), then .yaml
     for ext_file in ["core.md", "core.yaml"]:
         prompt_file = prompt_dir / ext_file
         if prompt_file.exists():
-            return prompt_file.read_text(encoding="utf-8")
+            if ext_file.endswith(".yaml"):
+                # For YAML files, return the 'role' field
+                with open(prompt_file, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+                return data.get("role", "")
+            else:
+                return prompt_file.read_text(encoding="utf-8")
 
     raise FileNotFoundError(
-        f"Prompt file not found in: {prompt_dir}. "
-        f"Create {prompt_path}/core.md or core.yaml in src/agents/prompts/"
+        f"Agent prompt not found in: {prompt_dir}. "
+        f"Create {agent_name}/core.md or core.yaml in src/agents/prompts/"
     )
 
 
@@ -65,50 +132,11 @@ def get_prompt_path(prompt_path: str) -> Path:
     return PROMPTS_DIR / prompt_path
 
 
-def get_prompt_content(file_path: str, key: str) -> str:
-    """
-    Load prompt content from a YAML file by key.
-
-    Used for loading specific prompts from structured YAML files,
-    like classifications/intent.yaml.
-
-    Args:
-        file_path: Path to YAML file relative to prompts dir
-                   (e.g., "classifications/intent.yaml")
-        key: Key to extract from the YAML file (e.g., "classification")
-
-    Returns:
-        Prompt content as string
-
-    Raises:
-        FileNotFoundError: If YAML file doesn't exist
-        KeyError: If key not found in YAML
-    """
-    import yaml
-
-    prompt_file = PROMPTS_DIR / file_path
-    if not prompt_file.exists():
-        raise FileNotFoundError(
-            f"Prompt file not found: {prompt_file}. "
-            f"Create {file_path} in src/agents/prompts/"
-        )
-
-    content = prompt_file.read_text(encoding="utf-8")
-    data = yaml.safe_load(content)
-
-    if key not in data:
-        raise KeyError(
-            f"Key '{key}' not found in {file_path}. "
-            f"Available keys: {list(data.keys())}"
-        )
-
-    return data[key]
-
-
 __all__ = [
+    "PROMPTS_YAML_PATH",
+    "PROMPTS_DIR",
+    "load_yaml_prompt",
+    "get_prompt_content",
     "load_agent_prompt",
     "get_prompt_path",
-    "get_prompt_content",
-    "PROMPTS_DIR",
-    "PROMPTS_YAML_PATH",
 ]
