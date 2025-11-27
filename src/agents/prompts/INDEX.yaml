@@ -72,6 +72,20 @@ agents:
     phase: routing
     purpose: Routes requests to appropriate chains
 
+tools:
+  todo:
+    file: todo/core.yaml
+    category: tools
+    purpose: Task management tools for multi-step operations
+    description: |
+      Provides add_task, list_tasks, update_task_status, remove_task, clear_completed.
+      Use for tracking complex multi-step work and coordinating across agents.
+
+  indexer:
+    file: indexer/core.md
+    category: tools
+    purpose: Codebase indexing and architecture search
+
 usage:
   classification_prompts: |
     from src.agents.prompts import get_prompt_content

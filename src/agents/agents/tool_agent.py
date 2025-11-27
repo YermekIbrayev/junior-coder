@@ -47,7 +47,11 @@ async def default_tool_executor(
     progress_callback: Optional[Callable] = None
 ) -> Any:
     """
-    Default tool executor that dispatches to indexer tools.
+    Default tool executor that dispatches to registered tools.
+
+    Supports:
+    - Indexer tools (index_project, search_architecture, etc.)
+    - Todo tools (add_task, list_tasks, update_task_status, etc.)
 
     Args:
         tool_name: Name of the tool to execute
@@ -58,12 +62,18 @@ async def default_tool_executor(
         Tool execution result
     """
     from src.agents.indexer import dispatch_tool, INDEXER_TOOLS
+    from src.agents.todo import dispatch_todo_tool, TODO_TOOLS
 
     # Check if tool is a known indexer tool
     indexer_tool_names = [t["function"]["name"] for t in INDEXER_TOOLS]
-
     if tool_name in indexer_tool_names:
         return await dispatch_tool(tool_name, arguments, progress_callback=progress_callback)
+
+    # Check if tool is a known todo tool
+    todo_tool_names = [t["function"]["name"] for t in TODO_TOOLS]
+    if tool_name in todo_tool_names:
+        # dispatch_todo_tool is sync (fast in-memory operations)
+        return dispatch_todo_tool(tool_name, arguments)
 
     # Unknown tool
     return {"error": f"Unknown tool: {tool_name}"}

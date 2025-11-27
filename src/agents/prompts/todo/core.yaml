@@ -1,0 +1,98 @@
+# Todo Tools Documentation
+# Location: src/agents/prompts/todo/core.yaml
+# Documentation for agents on using todo tools for task management
+
+name: todo-tools
+version: "1.0.0"
+category: tools
+
+description: |
+  Task management tools for AI agents. Use these to track multi-step
+  operations, maintain visibility into complex tasks, and coordinate
+  work across agents.
+
+tools:
+  add_task:
+    description: Add a new task to the shared todo list
+    parameters:
+      content: Description of what needs to be done (required, max 1000 chars)
+      activeForm: Present continuous form for display (required, e.g., "Implementing authentication")
+      priority: Optional priority hint (lower = higher priority)
+    returns:
+      success: true/false
+      task_id: UUID of created task
+      message: Status message
+    example: |
+      add_task({
+        "content": "Implement user authentication",
+        "activeForm": "Implementing user authentication",
+        "priority": 1
+      })
+
+  list_tasks:
+    description: List all tasks, optionally filtered by status
+    parameters:
+      status_filter: "all" | "pending" | "in_progress" | "completed" (default: all)
+    returns:
+      success: true/false
+      tasks: List of task objects with id, content, status, activeForm, created_at
+    example: |
+      list_tasks({"status_filter": "in_progress"})
+
+  update_task_status:
+    description: Update a task's status
+    parameters:
+      task_id: UUID of task to update (required)
+      status: "pending" | "in_progress" | "completed" (required)
+    returns:
+      success: true/false
+      message: Status message
+    example: |
+      update_task_status({
+        "task_id": "abc-123-...",
+        "status": "completed"
+      })
+
+  remove_task:
+    description: Remove a task by ID
+    parameters:
+      task_id: UUID of task to remove (required)
+    returns:
+      success: true/false
+      message: Status message
+    example: |
+      remove_task({"task_id": "abc-123-..."})
+
+  clear_completed:
+    description: Remove all completed tasks
+    parameters: none
+    returns:
+      success: true/false
+      message: Count of removed tasks
+    example: |
+      clear_completed({})
+
+best_practices:
+  - Use todo tools for multi-step tasks (3+ steps)
+  - Mark tasks in_progress BEFORE starting work
+  - Mark tasks completed IMMEDIATELY after finishing
+  - Keep only ONE task in_progress at a time
+  - Use clear, descriptive task content
+  - Provide meaningful activeForm for status display
+
+when_to_use:
+  - Complex multi-step implementations
+  - Bug fixing with multiple files
+  - Feature development requiring planning
+  - Refactoring operations
+  - Any task requiring coordination
+
+when_not_to_use:
+  - Single trivial operations
+  - Quick information queries
+  - Simple file edits
+
+integration:
+  import: from src.agents.todo import TODO_TOOLS, dispatch_todo_tool
+  via_tool_executor: default_tool_executor dispatches todo tools automatically
+  api_endpoint: POST /v1/tools/todo/invoke
