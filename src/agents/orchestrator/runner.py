@@ -104,11 +104,12 @@ async def _run_orchestrator_internal(
     # Call LLM directly to generate response
     if classification.intent == Intent.GENERAL:
         logger.info(f"General question from user {user_id}, calling LLM")
-        from src.agents.agents.runner import call_llm
-        llm_response = await call_llm(
+        from src.agents.agents.llm import call_llm
+        llm_message = await call_llm(
             http_client=http_client,
             messages=[{"role": "user", "content": user_message}]
         )
+        llm_response = llm_message.get("content", "")
         return OrchestratorResult(
             classification=classification,
             chain_id=None,

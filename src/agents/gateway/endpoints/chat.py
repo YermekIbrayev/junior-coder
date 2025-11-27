@@ -16,9 +16,13 @@ from src.agents.logging_config import (
 # Import from gateway for backward compatibility with test mocks
 import src.agents.gateway as gateway
 from src.agents.gateway.models import ChatRequest
+from fastapi.responses import StreamingResponse
+
 from src.agents.gateway.endpoints.helpers import (
-    extract_result, log_completion, store_memory, build_response, handle_error
+    extract_result, log_completion, store_memory, build_response, build_tool_response, handle_error
 )
+from src.agents.gateway.streaming import generate_tool_stream_response
+from src.agents.agents.llm import call_llm
 
 logger = get_logger("gateway.chat")
 
@@ -59,6 +63,8 @@ async def chat_completions(request: ChatRequest):
     )
     conversation = [{"role": m.role, "content": m.content} for m in request.messages]
 
+    has_tools = bool(request.tools)
+
     logger.info(
         LogEvent.REQUEST_RECEIVED,
         extra={
@@ -68,11 +74,63 @@ async def chat_completions(request: ChatRequest):
             "message_count": len(request.messages),
             "message_preview": user_message[:100] + "..." if len(user_message) > 100 else user_message,
             "temperature": request.temperature,
-            "max_tokens": request.max_tokens
+            "max_tokens": request.max_tokens,
+            "has_tools": has_tools,
+            "tool_count": len(request.tools) if request.tools else 0
         }
     )
 
     try:
+        # When tools are provided, call LLM directly with tools (bypass orchestrator)
+        if has_tools:
+            logger.info(f"Tool-enabled request with {len(request.tools)} tools, calling LLM directly")
+
+            # Convert tools to dict format for LLM (exclude None values)
+            tools_dict = [tool.model_dump(exclude_none=True) for tool in request.tools]
+            tool_choice = request.tool_choice
+
+            # Build messages including all message types (user, assistant, tool, etc.)
+            messages = []
+            for m in request.messages:
+                msg = {"role": m.role}
+                if m.content is not None:
+                    msg["content"] = m.content
+                if m.tool_calls:
+                    msg["tool_calls"] = m.tool_calls
+                if m.tool_call_id:
+                    msg["tool_call_id"] = m.tool_call_id
+                messages.append(msg)
+
+            llm_message = await call_llm(
+                http_client=_http_client,
+                messages=messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                tools=tools_dict,
+                tool_choice=tool_choice
+            )
+
+            response_time_ms = (time.time() - start_time) * 1000
+            log_completion("tool_call", 1.0, None, response_time_ms, str(llm_message))
+
+            # Handle streaming for tool-enabled requests
+            if request.stream:
+                completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
+                model_name = f"agent-gateway/{request.model}"
+                logger.debug(f"Streaming tool response: {completion_id}")
+                return StreamingResponse(
+                    generate_tool_stream_response(llm_message, model_name, completion_id),
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "X-Accel-Buffering": "no"
+                    }
+                )
+
+            return build_tool_response(request, llm_message, request_id)
+
+        # Standard orchestrator flow (no tools)
         result = await gateway.run_orchestrator(
             user_message=user_message,
             conversation=conversation,

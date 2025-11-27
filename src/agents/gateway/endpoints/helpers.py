@@ -112,6 +112,36 @@ def build_response(request: ChatRequest, response_text: str, request_id: str):
     )
 
 
+def build_tool_response(request: ChatRequest, llm_message: dict, request_id: str):
+    """Build response for tool-enabled requests (may include tool_calls)."""
+    completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
+    model_name = f"agent-gateway/{request.model}"
+
+    # Build the message dict from LLM response
+    message = {"role": "assistant"}
+
+    if llm_message.get("content"):
+        message["content"] = llm_message["content"]
+
+    if llm_message.get("tool_calls"):
+        message["tool_calls"] = llm_message["tool_calls"]
+
+    # Determine finish reason
+    finish_reason = "tool_calls" if llm_message.get("tool_calls") else "stop"
+
+    return ChatResponse(
+        id=completion_id,
+        created=int(time.time()),
+        model=model_name,
+        choices=[{
+            "index": 0,
+            "message": message,
+            "finish_reason": finish_reason
+        }],
+        usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    )
+
+
 def handle_error(e: Exception, start_time: float):
     """Handle request errors."""
     error_time_ms = (time.time() - start_time) * 1000
@@ -135,4 +165,4 @@ def handle_error(e: Exception, start_time: float):
     )
 
 
-__all__ = ["extract_result", "log_completion", "store_memory", "build_response", "handle_error"]
+__all__ = ["extract_result", "log_completion", "store_memory", "build_response", "build_tool_response", "handle_error"]
