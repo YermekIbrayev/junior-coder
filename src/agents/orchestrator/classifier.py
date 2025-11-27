@@ -74,6 +74,7 @@ async def classify_intent(user_message: str, http_client) -> IntentClassificatio
             "sdd": Intent.SDD,
             "tdd": Intent.TDD,
             "retro": Intent.RETRO,
+            "general": Intent.GENERAL,
             "unclear": Intent.UNCLEAR
         }
         intent = intent_map.get(intent_str, Intent.UNCLEAR)

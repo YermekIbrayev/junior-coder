@@ -45,6 +45,13 @@ class TestIntentEnum:
         assert hasattr(Intent, "UNCLEAR")
         assert Intent.UNCLEAR.value == "unclear"
 
+    def test_intent_has_general_value(self):
+        """Intent enum must have GENERAL value for general questions."""
+        from src.agents.orchestrator import Intent
+
+        assert hasattr(Intent, "GENERAL")
+        assert Intent.GENERAL.value == "general"
+
     def test_intent_is_enum(self):
         """Intent must be an Enum type."""
         from src.agents.orchestrator import Intent
@@ -684,6 +691,147 @@ class TestUnclearHandling:
 
         assert result.needs_clarification is False
         assert result.chain_id == "tdd"
+
+
+class TestGeneralHandling:
+    """Test GENERAL intent handling for general questions."""
+
+    @pytest.mark.asyncio
+    async def test_general_calls_llm_for_response(self, mock_httpx_client):
+        """GENERAL intent should make TWO HTTP calls: classification + LLM."""
+        from src.agents.orchestrator import run_orchestrator
+        from unittest.mock import MagicMock
+
+        # First call: classification returns GENERAL
+        # Second call: LLM generates actual response
+        classification_response = MagicMock()
+        classification_response.status_code = 200
+        classification_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": '{"intent": "general", "confidence": 0.85, "reasoning": "General question"}'
+                }
+            }]
+        }
+        classification_response.raise_for_status = MagicMock()
+
+        llm_response = MagicMock()
+        llm_response.status_code = 200
+        llm_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": "Python is a high-level programming language."
+                }
+            }]
+        }
+        llm_response.raise_for_status = MagicMock()
+
+        # Return classification first, then LLM response
+        mock_httpx_client.post.side_effect = [classification_response, llm_response]
+
+        result = await run_orchestrator(
+            user_message="What is Python?",
+            conversation=[{"role": "user", "content": "What is Python?"}],
+            http_client=mock_httpx_client
+        )
+
+        # KEY ASSERTION: GENERAL makes 2 HTTP calls (classification + LLM)
+        # Compare: SDD/TDD/RETRO only make 1 call (classification only)
+        assert mock_httpx_client.post.call_count == 2, \
+            "GENERAL should call classification AND LLM (2 calls)"
+
+        # Verify second call contains user message
+        second_call = mock_httpx_client.post.call_args_list[1]
+        payload = second_call.kwargs.get("json", {})
+        messages = payload.get("messages", [])
+        assert any("What is Python" in str(msg) for msg in messages), \
+            "LLM call should include user's question"
+
+        assert result.chain_id is None
+        assert result.needs_clarification is False
+
+    @pytest.mark.asyncio
+    async def test_general_makes_two_calls_vs_sdd_one_call(self, mock_httpx_client):
+        """GENERAL makes 2 HTTP calls, SDD/TDD/RETRO make only 1."""
+        from src.agents.orchestrator import run_orchestrator
+        from unittest.mock import MagicMock
+
+        # Test GENERAL: should make 2 calls
+        classification_response = MagicMock()
+        classification_response.status_code = 200
+        classification_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": '{"intent": "general", "confidence": 0.90, "reasoning": "Greeting"}'
+                }
+            }]
+        }
+        classification_response.raise_for_status = MagicMock()
+
+        llm_response = MagicMock()
+        llm_response.status_code = 200
+        llm_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": "Hello! How can I help you today?"
+                }
+            }]
+        }
+        llm_response.raise_for_status = MagicMock()
+
+        mock_httpx_client.post.side_effect = [classification_response, llm_response]
+
+        await run_orchestrator(
+            user_message="Hello",
+            conversation=[{"role": "user", "content": "Hello"}],
+            http_client=mock_httpx_client
+        )
+
+        # GENERAL should have made 2 calls
+        assert mock_httpx_client.post.call_count == 2, \
+            "GENERAL intent must make 2 HTTP calls (classification + LLM)"
+
+    @pytest.mark.asyncio
+    async def test_general_no_chain_execution(self, mock_httpx_client):
+        """GENERAL calls LLM directly, no chain execution even with execute_chain=True."""
+        from src.agents.orchestrator import run_orchestrator
+        from unittest.mock import MagicMock
+
+        classification_response = MagicMock()
+        classification_response.status_code = 200
+        classification_response.json.return_value = {
+            "choices": [{
+                "message": {
+                    "content": '{"intent": "general", "confidence": 0.85, "reasoning": "General"}'
+                }
+            }]
+        }
+        classification_response.raise_for_status = MagicMock()
+
+        llm_response = MagicMock()
+        llm_response.status_code = 200
+        llm_response.json.return_value = {
+            "choices": [{"message": {"content": "Here is my response."}}]
+        }
+        llm_response.raise_for_status = MagicMock()
+
+        mock_httpx_client.post.side_effect = [classification_response, llm_response]
+
+        result = await run_orchestrator(
+            user_message="Tell me a joke",
+            conversation=[],
+            http_client=mock_httpx_client,
+            execute_chain=True  # Even with execute_chain=True
+        )
+
+        # KEY: GENERAL makes 2 calls (classification + LLM), not chain execution
+        assert mock_httpx_client.post.call_count == 2, \
+            "GENERAL should call LLM directly (2 calls), not execute chain"
+
+        # No chain should be executed
+        assert result.chain_id is None
+        assert result.chain_output is None
+        assert result.needs_clarification is False
 
 
 class TestChainDispatch:

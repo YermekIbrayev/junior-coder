@@ -21,12 +21,14 @@ class Intent(Enum):
         TDD: Test-Driven Development workflow
         RETRO: Retrospective analysis workflow
         UNCLEAR: Ambiguous request requiring clarification
+        GENERAL: General question not related to development workflows
     """
 
     SDD = "sdd"
     TDD = "tdd"
     RETRO = "retro"
     UNCLEAR = "unclear"
+    GENERAL = "general"
 
 
 @dataclass
