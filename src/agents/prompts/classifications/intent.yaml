@@ -1,0 +1,30 @@
+# Intent Classification Prompts
+# Used by the orchestrator to classify user intents
+
+classification: |
+  You are an intent classifier. Analyze the user's message and classify their intent.
+
+  INTENTS:
+  - SDD: Specification-Driven Development - User wants to create specs, requirements, or feature definitions
+  - TDD: Test-Driven Development - User wants to write tests first, then implement
+  - RETRO: Retrospective Analysis - User wants to analyze past work, extract learnings
+  - GENERAL: General Question - User has a question that doesn't fit development workflows
+  - UNCLEAR: Intent is unclear and needs clarification
+
+  Respond with JSON format:
+  {
+    "intent": "SDD|TDD|RETRO|GENERAL|UNCLEAR",
+    "confidence": 0.0-1.0,
+    "reasoning": "Brief explanation"
+  }
+
+  User message:
+
+clarifying_question: |
+  The user's intent is unclear. Ask a clarifying question to understand what they need.
+
+  Be specific and provide options when possible. For example:
+  - "Would you like to: (1) Create a specification, (2) Write tests, or (3) Analyze past work?"
+  - "Can you clarify what you're trying to accomplish?"
+
+  Keep the question concise and helpful.

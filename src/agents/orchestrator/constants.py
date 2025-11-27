@@ -2,7 +2,10 @@
 Orchestrator Constants - Configuration values and prompts.
 
 Single Responsibility: Centralize configuration for intent classification.
+Prompts are loaded from .agents/prompts/classifications/intent.yaml.
 """
+
+from src.agents.prompts.loader import get_prompt_content
 
 # Confidence threshold for intent classification (0.0-1.0)
 # Below this threshold, the orchestrator will ask for clarification
@@ -17,16 +20,6 @@ CLASSIFICATION_MAX_TOKENS = 256
 # Model for classification (qwen is fast and sufficient for intent detection)
 CLASSIFICATION_MODEL = "qwen"
 
-# Clarifying question for unclear intents
-CLARIFYING_QUESTION = """I'd like to help, but I'm not sure what you're looking for. Could you please clarify?
-
-Are you trying to:
-- **Write a specification** (design documents, requirements, feature planning)
-- **Write tests** (unit tests, integration tests, TDD approach)
-- **Review and improve code** (code review, refactoring, retrospective analysis)
-
-Please provide more details about what you'd like to accomplish."""
-
 # Intent to human-readable name mapping
 INTENT_DISPLAY_NAMES = {
     "SDD": "Specification-Driven Development",
@@ -36,28 +29,9 @@ INTENT_DISPLAY_NAMES = {
     "GENERAL": "General Question"
 }
 
-# Classification prompt for intent detection
-CLASSIFICATION_PROMPT = """You are an intent classifier for a software development assistant.
-
-Analyze the user's message and classify their intent into one of these categories:
-- "sdd" (Specification-Driven Development): User wants to write specifications, design documents, requirements, or plan features
-- "tdd" (Test-Driven Development): User wants to write tests, test code, or follow TDD practices
-- "retro" (Retrospective): User wants to review, analyze, improve existing code, or do retrospective analysis
-- "general": User is asking a general question not related to the above development workflows (e.g., greetings, general knowledge, off-topic)
-- "unclear": The request is ambiguous and could fit multiple categories
-
-Respond with ONLY a JSON object in this exact format:
-{"intent": "<sdd|tdd|retro|general|unclear>", "confidence": <0.0-1.0>, "reasoning": "<brief explanation>"}
-
-Examples:
-- "Write a spec for user authentication" -> {"intent": "sdd", "confidence": 0.95, "reasoning": "User explicitly wants to write a specification"}
-- "Add tests for the login function" -> {"intent": "tdd", "confidence": 0.92, "reasoning": "User wants to write tests"}
-- "Review and refactor the API code" -> {"intent": "retro", "confidence": 0.88, "reasoning": "User wants to review and improve existing code"}
-- "What is Python?" -> {"intent": "general", "confidence": 0.90, "reasoning": "General knowledge question, not a development workflow request"}
-- "Hi" -> {"intent": "general", "confidence": 0.95, "reasoning": "Simple greeting, respond conversationally"}
-- "Hello, how are you?" -> {"intent": "general", "confidence": 0.95, "reasoning": "Greeting, not a development task"}
-- "Help me with something" -> {"intent": "unclear", "confidence": 0.3, "reasoning": "Request is too vague to determine intent"}
-"""
+# Load prompts from YAML
+CLASSIFICATION_PROMPT = get_prompt_content("classifications/intent.yaml", "classification")
+CLARIFYING_QUESTION = get_prompt_content("classifications/intent.yaml", "clarifying_question")
 
 __all__ = [
     "CONFIDENCE_THRESHOLD",
