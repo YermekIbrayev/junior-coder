@@ -100,6 +100,23 @@ async def _run_orchestrator_internal(
             chain_output=None
         )
 
+    # Handle general questions (not development workflow related)
+    # Call LLM directly to generate response
+    if classification.intent == Intent.GENERAL:
+        logger.info(f"General question from user {user_id}, calling LLM")
+        from src.agents.agents.runner import call_llm
+        llm_response = await call_llm(
+            http_client=http_client,
+            messages=[{"role": "user", "content": user_message}]
+        )
+        return OrchestratorResult(
+            classification=classification,
+            chain_id=None,
+            response=llm_response,
+            needs_clarification=False,
+            chain_output=None
+        )
+
     # Map intent to chain ID
     chain_id = classification.intent.value  # "sdd", "tdd", or "retro"
 

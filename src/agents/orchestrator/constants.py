@@ -32,7 +32,8 @@ INTENT_DISPLAY_NAMES = {
     "SDD": "Specification-Driven Development",
     "TDD": "Test-Driven Development",
     "RETRO": "Retrospective Analysis",
-    "UNCLEAR": "Unclear Intent"
+    "UNCLEAR": "Unclear Intent",
+    "GENERAL": "General Question"
 }
 
 # Classification prompt for intent detection
@@ -42,16 +43,20 @@ Analyze the user's message and classify their intent into one of these categorie
 - "sdd" (Specification-Driven Development): User wants to write specifications, design documents, requirements, or plan features
 - "tdd" (Test-Driven Development): User wants to write tests, test code, or follow TDD practices
 - "retro" (Retrospective): User wants to review, analyze, improve existing code, or do retrospective analysis
-- "unclear": The request is ambiguous or doesn't clearly fit any category
+- "general": User is asking a general question not related to the above development workflows (e.g., greetings, general knowledge, off-topic)
+- "unclear": The request is ambiguous and could fit multiple categories
 
 Respond with ONLY a JSON object in this exact format:
-{"intent": "<sdd|tdd|retro|unclear>", "confidence": <0.0-1.0>, "reasoning": "<brief explanation>"}
+{"intent": "<sdd|tdd|retro|general|unclear>", "confidence": <0.0-1.0>, "reasoning": "<brief explanation>"}
 
 Examples:
 - "Write a spec for user authentication" -> {"intent": "sdd", "confidence": 0.95, "reasoning": "User explicitly wants to write a specification"}
 - "Add tests for the login function" -> {"intent": "tdd", "confidence": 0.92, "reasoning": "User wants to write tests"}
 - "Review and refactor the API code" -> {"intent": "retro", "confidence": 0.88, "reasoning": "User wants to review and improve existing code"}
-- "Help me" -> {"intent": "unclear", "confidence": 0.3, "reasoning": "Request is too vague to determine intent"}
+- "What is Python?" -> {"intent": "general", "confidence": 0.90, "reasoning": "General knowledge question, not a development workflow request"}
+- "Hi" -> {"intent": "general", "confidence": 0.95, "reasoning": "Simple greeting, respond conversationally"}
+- "Hello, how are you?" -> {"intent": "general", "confidence": 0.95, "reasoning": "Greeting, not a development task"}
+- "Help me with something" -> {"intent": "unclear", "confidence": 0.3, "reasoning": "Request is too vague to determine intent"}
 """
 
 __all__ = [
