@@ -27,6 +27,7 @@ tools:
     - serena
     - ide
     - clean-code
+    - todo  # Track test creation progress
   prohibited:
     - playwright (unless UI testing needed)
 

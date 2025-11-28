@@ -24,6 +24,7 @@ tools:
     - ide
     - clean-code
     - context7
+    - todo  # Task management for multi-step implementations
   prohibited:
     - None (full access for implementation)
 

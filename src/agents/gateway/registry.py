@@ -28,6 +28,7 @@ AGENTS = {
 
     # Tool Agents
     "indexer": "Indexes codebase structure, enables architecture search",
+    "todo": "Task management for agents - add, list, update, remove tasks",
 }
 
 __all__ = ["AGENTS"]

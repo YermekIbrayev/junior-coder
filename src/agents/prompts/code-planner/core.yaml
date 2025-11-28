@@ -24,6 +24,7 @@ tools:
     - serena
     - octocode
     - context7
+    - todo  # Track planning tasks and coordination
   prohibited:
     - ide (planning only, not implementing)
 
